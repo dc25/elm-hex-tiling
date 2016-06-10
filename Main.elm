@@ -2,10 +2,11 @@ import Html as H
 import String exposing (join)
 import Html.Attributes as HA
 import Svg 
-import List.Extra as LE exposing (andThen)
-import Signal 
+import List exposing (concat,map)
 import Svg.Events exposing (onClick, onMouseOver)
 import Svg.Attributes exposing (version, viewBox, width, height, fill, stroke, strokeWidth, style, points, transform)
+
+import Html.App as Html
 
 w = 1000
 h = 600
@@ -31,7 +32,7 @@ init rc cc =
 
 center = HA.style [ ( "text-align", "center") ] 
 
-view address model = 
+view model = 
     let
         radius = 0.5
         halfRadius = radius / 2.0
@@ -60,14 +61,16 @@ view address model =
                                           else "grey"
                         , stroke <| "black" 
                         , strokeWidth <| "0.07"
-                        , onClick <| Signal.message address <| SetSelected (row, col)
-                        , onMouseOver <| Signal.message address <| SetVisited (row, col)
+                        , onClick <| SetSelected (row, col)
+                        , onMouseOver <| SetVisited (row, col)
                         ]
                         [] 
-
-        cells model = [0..model.rows-1] `LE.andThen` \r ->
-                      [0..model.cols-1] `LE.andThen` \c ->
-                      [showCell r c]
+        
+        cells model = concat ( map ( \r -> 
+                             ( map ( \c -> 
+                                showCell r c) 
+                                    [0..model.cols-1] ) ) 
+                                    [0..model.rows-1] )
 
     in 
         H.div 
@@ -98,10 +101,11 @@ update action model =
             {model |  visited = Just cell} 
         NoOp -> model
 
-control = Signal.mailbox NoOp
+type Msg = NoOp | SetSelected Cell | SetVisited Cell
 
-type Action = NoOp | SetSelected Cell | SetVisited Cell
-
-modelSignal = Signal.foldp update (init rowCount colCount) control.signal
-
-main = Signal.map (view control.address) modelSignal 
+main = 
+    Html.beginnerProgram 
+        { model = init rowCount colCount
+        , view = view
+        , update = update
+        }
